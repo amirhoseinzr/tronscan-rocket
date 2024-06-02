@@ -14,36 +14,53 @@ use rocket::{get, routes};
 use serde::{Serialize, Deserialize};
 use serde_json::error::Category::Data;
 use rocket::config::*;
+use csv::Writer;
+use std::fs::File;
+use std::io::Write;
+use rocket::futures::StreamExt;
+use surrealdb::Surreal;
+use surrealdb::engine::remote::ws::Ws;
+use surrealdb::opt::auth::Root;
 
-//#[derive(Serialize, Deserialize, Debug)]
-// pub struct TokenInfo {
-//     pub token_price_in_usd: String,
-//     pub frozen_token_value_in_usd: Option<String>,
-//     pub frozen: Option<i32>,
-//     pub token_value: String,
-//     pub token_type: i32,
-//     pub token_price: String,
-//     pub token_decimal: i32,
-//     pub token_value_in_usd: String,
-//     pub token_id: String,
-//     pub token_abbr: String,
-//     pub balance: String,
-//     pub token_name: String,
-//     pub pair_id: Option<i32>,
-//     pub vip: bool,
-//     pub token_url: String,
-//     // Fields that may not be present in all responses
-//     pub level: Option<String>,
-//     pub transferCount: Option<i32>,
-//     pub nrOfTokenHolders: Option<i32>,
-// }
 
-// #[derive(Serialize, Deserialize, Debug)]
-// pub struct ApiResponse {
-//     pub data: Vec<TokenInfo>,
-//     pub count: i32,
-// }
 
+//------------------------------------ IO Layer   ----------------------------------------------//
+
+
+//------------------------------------ ********   ----------------------------------------------//
+
+
+
+
+
+//------------------------------------    ----------------------------------------------//
+#[derive(Debug)]
+struct Wallet {
+    public_key: String,
+
+}
+
+
+
+
+#[derive(Deserialize)]
+struct WalletRelatedAddresses {
+    wallet_address: Wallet,
+    relate_addresses: Vec<Wallet>
+}
+
+
+
+
+
+
+
+
+
+
+//---------------------- **************** ---------------------------------//
+
+// ----------------------  INTERACT LAYER -----------------------------//
 #[get("/")]
 fn welcome_page() -> Value {
     json!("tronscann-rocket")
@@ -59,11 +76,17 @@ fn wallet_modify() -> Value {
     json!({"public_key": "public-key example" })
 }
 
+//---------------------- **************** ---------------------------------//
+
+
 //-------------   get to receive wallet trc20 transactions   ----------------\\
 
 #[get("/wallet_trx")]
 async fn receive_wallet_trc20_transaction() -> Result<String , Status> {
-    let api_url = "https://apilist.tronscanapi.com/api/transfer/trc20?address=TSTVYwFDp7SBfZk7Hrz3tucwQVASyJdwC7&trc20Id=TCmSR8UYWvsZkZmprGKaudTuWUZ62ycnnN&start=0&limit=2&direction=0&reverse=true&db_version=1&start_timestamp=&end_timestamp=";
+    let api_url = "https://apilist.tronscanapi.com/api/transfer/\
+    trc20?address=YwFDp7SBfZk7Hrz3tucwQVASyJdwC7\
+    &trc20Id=TCmSR8UYWvsZkZmprGKaudTuWUZ62ycnnN&start\
+    =0&limit=2&direction=0&reverse=true&db_version=1&start_timestamp=&end_timestamp=";
     let api_key = "191b7eff-354f-426a-b48f-f22331909989";
     let client = Client::new();
 
@@ -99,8 +122,11 @@ async fn receive_wallet_info() -> Result<String , Status> {
         .await
         .map_err(|_| Status::InternalServerError)?;
 
+
+
     if response.status().is_success() {
         let data = response.text().await.map_err(|_| Status::InternalServerError)?;
+        let data_out = data.clone();
         Ok(data)
     }
         else {
@@ -165,8 +191,17 @@ fn delete_wallet_info(id: &str) -> status::NoContent {
     status::NoContent
 }
 
+
+
+
+
+
+
+//------------------------------------------------------------------------
+
 #[rocket::main]
-async fn main() {
+async fn main() -> surrealdb::Result<> {
+    let db = Surreal::new::<Ws>("localhost:8001").await?;
 
     //let port = 8080;
 
